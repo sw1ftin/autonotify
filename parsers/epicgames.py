@@ -1,27 +1,22 @@
 import requests
 import json
 from datetime import datetime
-import pytz
 
 def create_game_info(game, offer, status, available_in_russia=None):
     """Создает словарь с информацией об игре"""
-    # Получаем цены в разных валютах
     price_info = {
         "discount": 0,
         "RUB": {"original": -1, "current": -1},
         "USD": {"original": -1, "current": -1}
     }
     
-    # Получаем базовую цену
     if game.get('price'):
         total_price = game['price'].get('totalPrice', {})
         discount = offer['discountSetting']['discountPercentage']
         
-        # Цена в копейках/центах, делим на 100
         original_price = total_price.get('originalPrice', 0) / 100
         current_price = total_price.get('discountPrice', original_price) / 100
         
-        # Определяем валюту
         currency = total_price.get('currencyCode', 'USD')
         if currency in price_info:
             price_info[currency] = {
@@ -43,7 +38,7 @@ def create_game_info(game, offer, status, available_in_russia=None):
     }
 
 def process_offers(game, offers, status, available_in_russia=None):
-    """Обрабатывает предложения (активные или будущие)"""
+    """Обрабатывает предложения"""
     games_list = []
     if offers:
         for offer in offers[0].get('promotionalOffers', []):
@@ -90,20 +85,16 @@ def get_free_games():
     if not us_games or not ru_games:
         return None
         
-    # Создаем словарь игр из США для быстрого поиска
     us_titles = {game['title']: game for game in us_games}
     
-    # Проверяем доступность каждой игры в России
     final_games = []
     for ru_game in ru_games:
         ru_game['available_in_russia'] = ru_game['title'] in us_titles
         if ru_game['title'] in us_titles:
-            # Добавляем USD цены из US версии игры
             us_price = us_titles[ru_game['title']]['price']['USD']
             ru_game['price']['USD'] = us_price
         final_games.append(ru_game)
     
-    # Добавляем игры, которые есть в США, но нет в России
     for us_game in us_games:
         if not any(game['title'] == us_game['title'] for game in ru_games):
             us_game['available_in_russia'] = False

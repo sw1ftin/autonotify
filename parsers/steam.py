@@ -66,18 +66,16 @@ class SteamParser:
         price_info = game_data.get("price_overview", {})
         is_free = game_data.get("is_free", False)
         
-        # Получаем цены для разных регионов
         ru_data = self.get_game_details(game_data['steam_appid'], 'RU')
         kz_data = self.get_game_details(game_data['steam_appid'], 'KZ')
         
         ru_price_info = ru_data.get("price_overview", {}) if ru_data else {}
         kz_price_info = kz_data.get("price_overview", {}) if kz_data else {}
         
-        # Инициализируем структуру цен
         price = {
             "discount": 0,
             "RUB": {
-                "original": -1,  # -1 означает "неизвестно"
+                "original": -1,
                 "current": -1
             },
             "KZT": {
@@ -86,7 +84,6 @@ class SteamParser:
             }
         }
         
-        # Обрабатываем цены в рублях
         if ru_price_info:
             try:
                 initial = ru_price_info.get("initial", 0)
@@ -100,7 +97,6 @@ class SteamParser:
             except (TypeError, ValueError) as e:
                 print(f"Error processing RUB price for game {game_data.get('name')}: {e}")
         
-        # Обрабатываем цены в тенге
         if kz_price_info:
             try:
                 initial = kz_price_info.get("initial", 0)

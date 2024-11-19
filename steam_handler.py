@@ -18,7 +18,6 @@ def create_steam_search_keyboard(games: list, page: int = 0, items_per_page: int
     """Создает клавиатуру с результатами поиска"""
     builder = InlineKeyboardBuilder()
     
-    # Добавляем кнопки с играми
     start_idx = page * items_per_page
     end_idx = min(start_idx + items_per_page, len(games))
     
@@ -28,9 +27,8 @@ def create_steam_search_keyboard(games: list, page: int = 0, items_per_page: int
             text=f"{i+1}. {game['name']}",
             callback_data=f"steam_select_{game['id']}"
         )
-        builder.adjust(1)  # По одной кнопке в ряд
+        builder.adjust(1)
     
-    # Навигационные кнопки
     nav_buttons = [
         InlineKeyboardButton(
             text="◀️" if page > 0 else "　",
@@ -46,10 +44,7 @@ def create_steam_search_keyboard(games: list, page: int = 0, items_per_page: int
         )
     ]
     
-    # Добавляем кнопки навигации
     builder.row(*nav_buttons)
-    
-    # Добавляем кнопку отмены
     builder.row(InlineKeyboardButton(
         text="❌ Отмена",
         callback_data="steam_search_cancel"
@@ -64,7 +59,6 @@ def format_steam_post(game_info: Dict) -> str:
     else:
         prices = []
         
-        # Цена в рублях
         if game_info['price']['RUB']['current'] != -1:
             rub_price = f"{game_info['price']['RUB']['current']} ₽"
             if game_info['price']['discount'] > 0:
@@ -73,7 +67,6 @@ def format_steam_post(game_info: Dict) -> str:
         else:
             prices.append("Неизвестно")
             
-        # Цена в тенге
         if game_info['price']['KZT']['current'] != -1:
             kzt_price = f"{game_info['price']['KZT']['current']} ₸"
             if game_info['price']['discount'] > 0:

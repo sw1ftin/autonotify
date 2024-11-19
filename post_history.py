@@ -18,7 +18,6 @@ def load_history():
         with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     except json.JSONDecodeError:
-        # Если файл поврежден, создаем новый
         with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
             json.dump([], f, ensure_ascii=False, indent=2)
         return []
@@ -52,7 +51,7 @@ def is_game_posted(game_title: str) -> bool:
         return any(post['title'].lower() == game_title.lower() for post in history)
     except Exception as e:
         print(f"Ошибка при проверке истории: {e}")
-        return False  # В случае ошибки считаем, что пост не был опубликован 
+        return False
 
 def remove_from_history(game_title: str):
     """Удаляет игру из истории"""

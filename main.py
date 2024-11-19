@@ -21,19 +21,15 @@ import configparser
 from pathlib import Path
 from typing import Optional
 
-# Загружаем переменные окружения из .env файла
 load_dotenv()
 
-# Загружаем настройки
 config = configparser.ConfigParser()
 config.read('settings.cfg', encoding='utf-8')
 
-# Настройка временной зоны из конфига
 TIMEZONE = config.get('timezone', 'timezone', fallback='Europe/Moscow')
 CHECK_INTERVAL = config.getint('check_interval', 'interval', fallback=3600)
 STEAM_MIN_DISCOUNT = config.getint('steam', 'min_discount', fallback=50)
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
 BOT_TOKEN = os.getenv('TG_BOT_TOKEN')
@@ -44,7 +40,6 @@ CHANNEL_ID = os.getenv('TG_CHANNEL_ID')
 if not CHANNEL_ID:
     raise ValueError("Не установлен ID канала (TG_CHANNEL_ID)")
 
-# Инициализация бота и диспетчера
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
@@ -52,14 +47,12 @@ def get_post_keyboard(post_id: str, game_info: dict = None) -> Optional[InlineKe
     """Создает клавиатуру с кнопками для поста"""
     buttons = []
     
-    # Для предпросмотра добавляем кнопки публикации/удаления
     if post_id:
         buttons.append([
             InlineKeyboardButton(text="✅ Опубликовать", callback_data=f"post_{post_id}"),
             InlineKeyboardButton(text="❌ Удалить", callback_data=f"delete_{post_id}")
         ])
     
-    # Для активных раздач добавляем кнопку получения игры
     if game_info and game_info.get('status') == 'active':
         buttons.append([
             InlineKeyboardButton(text="🎮 Забрать игру", url=game_info['url'])
@@ -69,19 +62,16 @@ def get_post_keyboard(post_id: str, game_info: dict = None) -> Optional[InlineKe
 
 def format_game_post(game_info: dict) -> str:
     """Форматирует пост об игре используя HTML разметку"""
-    # Форматируем даты
     start_date = datetime.fromisoformat(game_info['start_date'].replace('Z', '+00:00'))
     end_date = datetime.fromisoformat(game_info['end_date'].replace('Z', '+00:00'))
     msk_tz = pytz.timezone('Europe/Moscow')
     start_date_msk = start_date.astimezone(msk_tz).strftime("%d.%m.%Y %H:%M (МСК)")
     end_date_msk = end_date.astimezone(msk_tz).strftime("%d.%m.%Y %H:%M (МСК)")
     
-    # Форматируем цену
     price = (f"{game_info['price']['RUB']['original']} ₽" 
              if game_info['price']['RUB']['original'] != -1 
              else f"${game_info['price']['USD']['original']}")
     
-    # Добавляем теги в зависимости от статуса
     status_tags = {
         'active': '#актуально',
         'upcoming': '#скоро',
@@ -116,15 +106,11 @@ def format_game_post(game_info: dict) -> str:
 async def check_steam_deals():
     """Проверяет скидки в Steam"""
     try:
-        # Получаем список игр со скидками
-        # Здесь можно добавить свою логику поиска игр со скидками
-        # Например, через поиск по тегам или категориям
         search_results = steam_parser.search_games("*")
         
         for game in search_results:
             game_info = steam_parser.get_game_by_id(str(game['id']))
             if game_info and not is_game_posted(game_info['title']):
-                # Проверяем, есть ли достаточная скидка
                 if game_info['price']['discount'] >= STEAM_MIN_DISCOUNT:
                     formatted_text = format_steam_post(game_info)
                     await bot.send_photo(
@@ -148,7 +134,7 @@ async def check_ended_giveaways():
             try:
                 end_time = datetime.fromisoformat(game['end_date'].replace('Z', '+00:00'))
                 if current_time > end_time:
-                    game['status'] = 'ended'  # Обновляем статус
+                    game['status'] = 'ended'
                     text = [
                         f"🚫 {hbold('Раздача завершена')}",
                         "",
@@ -212,15 +198,12 @@ async def periodic_checks():
     """Периодическая проверка обеих платформ"""
     while True:
         try:
-            # Проверяем завершенные раздачи
             logging.info("Проверка завершенных раздач")
             await check_ended_giveaways()
             
-            # Проверяем начавшиеся раздачи
             logging.info("Проверка начавшихся раздач")
             await check_started_giveaways()
             
-            # Проверяем Epic Games
             logging.info("Запуск проверки Epic Games")
             games = get_free_games()
             if games:
@@ -237,7 +220,6 @@ async def periodic_checks():
                         add_to_history(game, 'auto')
                         await asyncio.sleep(2)
             
-            # Проверяем Steam
             logging.info("Запуск проверки Steam")
             await check_steam_deals()
             
@@ -246,7 +228,7 @@ async def periodic_checks():
             
         except Exception as e:
             logging.error(f"Ошибка при выполнении периодических проверок: {e}")
-            await asyncio.sleep(300)  # При ошибке ждем 5 минут
+            await asyncio.sleep(300)
 
 @dp.message(Command("post"))
 async def cmd_post(message: types.Message):
@@ -271,7 +253,6 @@ async def cmd_post(message: types.Message):
                 post_id = f"epic_games_{game['title'].lower().replace(' ', '_')}"
                 formatted_text = format_game_post(game)
                 
-                # Добавляем информацию о статусе публикации
                 posted_status = "✅ Уже опубликовано" if is_game_posted(game['title']) else "⏳ Не опубликовано"
                 formatted_text += f"\n\n{posted_status}"
                 
@@ -288,7 +269,6 @@ async def cmd_post(message: types.Message):
                 logging.error(error_msg)
                 await message.reply(error_msg)
         
-        # Удаляем сообщение "Предпросмотр постов:"
         await preview_msg.delete()
         
     except Exception as e:
@@ -306,7 +286,6 @@ async def process_callback(callback_query: types.CallbackQuery):
             return
             
         if callback_query.data.startswith('steam_page_'):
-            # Игнорируем нажатия на неактивные кнопки и текущую страницу
             if callback_query.data in ['steam_page_none', 'steam_page_current']:
                 await callback_query.answer()
                 return
@@ -340,7 +319,6 @@ async def process_callback(callback_query: types.CallbackQuery):
                 await callback_query.answer("Ошибка: игра не найдена")
             return
             
-        # Обработка осталных callback_query (post/delete)
         action, post_id = callback_query.data.split('_', 1)
         
         if action == "delete":
@@ -364,7 +342,6 @@ async def process_callback(callback_query: types.CallbackQuery):
                     await callback_query.message.delete()
                     await callback_query.answer("Пост опубликован в канал")
             else:
-                # Обработка постов Epic Games
                 games = get_free_games()
                 game_title = post_id.replace('epic_games_', '').replace('_', ' ')
                 game_info = next((game for game in games if game['title'].lower() == game_title.lower()), None)
@@ -437,9 +414,6 @@ async def cmd_steam_url(message: types.Message):
 @dp.callback_query(lambda c: c.data.startswith('steam_page_'))
 async def process_steam_page(callback_query: types.CallbackQuery):
     page = int(callback_query.data.split('_')[2])
-    # Здесь нужно сохранять результаты поиска между запросами
-    # Можно использовать Redis или простой словарь в памяти
-    # Для примера используем атрибут бота
     if not hasattr(bot, 'steam_search_results'):
         await callback_query.answer("Поиск устарел, выполните новый поиск")
         return
@@ -490,7 +464,6 @@ async def handle_message(message: types.Message):
         
     text = message.text.strip()
     
-    # Проверяем, являетс ли сообщение ссылкой на Steam
     if 'store.steampowered.com' in text:
         game_info = await get_steam_game_by_url(text)
         if not game_info:
@@ -506,14 +479,12 @@ async def handle_message(message: types.Message):
             reply_markup=get_post_keyboard(f"steam_{game_info['steam_appid']}")
         )
     
-    # Если это не ссылка, считаем текст поисковым запросом
     else:
         games = await search_steam_games(text)
         if not games:
             await message.reply("Игры не найдены")
             return
             
-        # Сохраняем результаты поиска для пагинаци
         bot.steam_search_results = games
         
         await message.reply(
@@ -522,9 +493,7 @@ async def handle_message(message: types.Message):
         )
 
 async def main():
-    # Заменяем auto_post_games на periodic_checks
     asyncio.create_task(periodic_checks())
-    # Запускаем бота
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

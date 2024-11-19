@@ -39,7 +39,6 @@ def get_telegram_timestamp(date_str: str) -> str:
     dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
     msk = pytz.timezone('Europe/Moscow')
     dt = dt.astimezone(msk)
-    # Форматируем дату и экранируем специальные символы
     formatted_date = dt.strftime("%d.%m.%Y %H:%M (МСК)")
     return escape_markdown_v2(formatted_date)
 
@@ -76,11 +75,10 @@ def generate_game_post(game: Dict, platform: str = 'discord') -> Tuple[str, str]
 
 *{'Доступно' if game['available_in_russia'] else 'Недоступно'} на аккаунтах с регионом Россия {':URA:' if game['available_in_russia'] else ':SAJ:'}*"""
     else:
-        # Экранируем все специальные символы для Telegram
         title = escape_markdown_v2(game['title'])
         publisher = escape_markdown_v2(game['publisher'])
         price = escape_markdown_v2(format_price(game['price']))
-        url = game['url']  # URL не нужно экранировать
+        url = game['url']
         start_date = get_telegram_timestamp(game['start_date'])
         end_date = get_telegram_timestamp(game['end_date'])
         
@@ -148,10 +146,7 @@ def save_posts_to_file(posts: Dict[str, Dict[str, str]], filename: str = "genera
 
 if __name__ == "__main__":
     try:
-        # Теперь можно указать нужную платформу
-        posts = generate_posts('telegram')  # или 'telegram', или 'all'
-        
-        # Выводим в консоль
+        posts = generate_posts('all')
         for key, post_data in posts.items():
             print(f"\n=== {key} ===\n")
             
@@ -169,7 +164,6 @@ if __name__ == "__main__":
             print(post_data['image'])
             print("\n" + "="*50)
         
-        # Сохраняем в файл
         save_posts_to_file(posts)
         print("\nПосты успешно сохранены в generated_posts.txt")
         
