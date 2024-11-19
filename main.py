@@ -19,6 +19,7 @@ from steam_handler import (
 )
 import configparser
 from pathlib import Path
+from typing import Optional
 
 # Загружаем переменные окружения из .env файла
 load_dotenv()
@@ -47,13 +48,24 @@ if not CHANNEL_ID:
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-def get_post_keyboard(post_id: str) -> InlineKeyboardMarkup:
+def get_post_keyboard(post_id: str, game_info: dict = None) -> Optional[InlineKeyboardMarkup]:
     """Создает клавиатуру с кнопками для поста"""
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="✅ Опубликовать", callback_data=f"post_{post_id}"),
-        InlineKeyboardButton(text="❌ Удалить", callback_data=f"delete_{post_id}")
-    ]])
-    return keyboard
+    buttons = []
+    
+    # Для предпросмотра добавляем кнопки публикации/удаления
+    if post_id:
+        buttons.append([
+            InlineKeyboardButton(text="✅ Опубликовать", callback_data=f"post_{post_id}"),
+            InlineKeyboardButton(text="❌ Удалить", callback_data=f"delete_{post_id}")
+        ])
+    
+    # Для активных раздач добавляем кнопку получения игры
+    if game_info and game_info.get('status') == 'active':
+        buttons.append([
+            InlineKeyboardButton(text="🎮 Забрать игру", url=game_info['url'])
+        ])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None
 
 def format_game_post(game_info: dict) -> str:
     """Форматирует пост об игре используя HTML разметку"""
@@ -68,6 +80,13 @@ def format_game_post(game_info: dict) -> str:
     price = (f"{game_info['price']['RUB']['original']} ₽" 
              if game_info['price']['RUB']['original'] != -1 
              else f"${game_info['price']['USD']['original']}")
+    
+    # Добавляем теги в зависимости от статуса
+    status_tags = {
+        'active': '#актуально',
+        'upcoming': '#скоро',
+        'ended': '#завершено'
+    }
     
     text = [
         f"🎮 {hbold(game_info['title'])}",
@@ -89,7 +108,7 @@ def format_game_post(game_info: dict) -> str:
             else "Недоступно на аккаунтах с регионом Россия 😢"
         ),
         "",
-        "#egs"  # Добавляем хештег
+        f"{status_tags.get(game_info['status'], '')} \n#egs"
     ]
     
     return "\n".join(text)
@@ -129,7 +148,7 @@ async def check_ended_giveaways():
             try:
                 end_time = datetime.fromisoformat(game['end_date'].replace('Z', '+00:00'))
                 if current_time > end_time:
-                    # Формируем сообщение о завершении раздачи
+                    game['status'] = 'ended'  # Обновляем статус
                     text = [
                         f"🚫 {hbold('Раздача завершена')}",
                         "",
@@ -137,17 +156,15 @@ async def check_ended_giveaways():
                         "",
                         "Раздача этой игры больше не доступна.",
                         "",
-                        f"#{game['status'].split('_')[0]}"  # steam или egs
+                        "#завершено \n#egs"
                     ]
                     
-                    # Отправляем сообщение в канал
                     await bot.send_message(
                         chat_id=CHANNEL_ID,
                         text="\n".join(text),
                         parse_mode=ParseMode.HTML
                     )
                     
-                    # Удаляем игру из истории
                     remove_from_history(game['title'])
                     logging.info(f"Удалена завершенная раздача: {game['title']}")
             except Exception as e:
@@ -157,6 +174,40 @@ async def check_ended_giveaways():
     except Exception as e:
         logging.error(f"Ошибка при проверке завершенных раздач: {e}")
 
+async def check_started_giveaways():
+    """Проверяет начавшиеся раздачи"""
+    try:
+        posted_games = get_posted_games()
+        current_time = datetime.now(pytz.UTC)
+        
+        for game in posted_games:
+            try:
+                if game['status'] == 'upcoming':
+                    start_time = datetime.fromisoformat(game['start_date'].replace('Z', '+00:00'))
+                    if current_time >= start_time:
+                        games = get_free_games()
+                        game_info = next((g for g in games if g['title'] == game['title']), None)
+                        
+                        if game_info and game_info['status'] == 'active':
+                            formatted_text = format_game_post(game_info)
+                            await bot.send_photo(
+                                chat_id=CHANNEL_ID,
+                                photo=game_info['image_url'],
+                                caption=formatted_text,
+                                parse_mode=ParseMode.HTML,
+                                reply_markup=get_post_keyboard(None, game_info)
+                            )
+                            
+                            remove_from_history(game['title'])
+                            add_to_history(game_info, 'auto')
+                            
+                            logging.info(f"Обновлен статус раздачи: {game['title']}")
+            except Exception as e:
+                logging.error(f"Ошибка при обработке начавшейся раздачи {game['title']}: {e}")
+                continue
+    except Exception as e:
+        logging.error(f"Ошибка при проверке начавшихся раздач: {e}")
+
 async def periodic_checks():
     """Периодическая проверка обеих платформ"""
     while True:
@@ -164,6 +215,10 @@ async def periodic_checks():
             # Проверяем завершенные раздачи
             logging.info("Проверка завершенных раздач")
             await check_ended_giveaways()
+            
+            # Проверяем начавшиеся раздачи
+            logging.info("Проверка начавшихся раздач")
+            await check_started_giveaways()
             
             # Проверяем Epic Games
             logging.info("Запуск проверки Epic Games")
@@ -176,7 +231,8 @@ async def periodic_checks():
                             chat_id=CHANNEL_ID,
                             photo=game['image_url'],
                             caption=formatted_text,
-                            parse_mode=ParseMode.HTML
+                            parse_mode=ParseMode.HTML,
+                            reply_markup=get_post_keyboard(None, game)
                         )
                         add_to_history(game, 'auto')
                         await asyncio.sleep(2)
@@ -284,7 +340,7 @@ async def process_callback(callback_query: types.CallbackQuery):
                 await callback_query.answer("Ошибка: игра не найдена")
             return
             
-        # Обработка остальных callback_query (post/delete)
+        # Обработка осталных callback_query (post/delete)
         action, post_id = callback_query.data.split('_', 1)
         
         if action == "delete":
@@ -301,13 +357,14 @@ async def process_callback(callback_query: types.CallbackQuery):
                         chat_id=CHANNEL_ID,
                         photo=game_info['image_url'],
                         caption=formatted_text,
-                        parse_mode=ParseMode.HTML
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=get_post_keyboard(None, game_info)
                     )
                     add_to_history(game_info, 'manual')
                     await callback_query.message.delete()
                     await callback_query.answer("Пост опубликован в канал")
             else:
-                # Обработка постов Epic Games (существующий код)
+                # Обработка постов Epic Games
                 games = get_free_games()
                 game_title = post_id.replace('epic_games_', '').replace('_', ' ')
                 game_info = next((game for game in games if game['title'].lower() == game_title.lower()), None)
@@ -318,7 +375,8 @@ async def process_callback(callback_query: types.CallbackQuery):
                         chat_id=CHANNEL_ID,
                         photo=game_info['image_url'],
                         caption=formatted_text,
-                        parse_mode=ParseMode.HTML
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=get_post_keyboard(None, game_info)
                     )
                     add_to_history(game_info, 'manual')
                     await callback_query.message.delete()
@@ -391,7 +449,7 @@ async def process_steam_page(callback_query: types.CallbackQuery):
     )
 
 async def send_help_message(message: types.Message):
-    """Отправляет сообщение с помощью"""
+    """Отправляет сообщние с помощью"""
     help_text = [
         f"{hbold('📋 Доступные команды:')}",
         "",
@@ -455,7 +513,7 @@ async def handle_message(message: types.Message):
             await message.reply("Игры не найдены")
             return
             
-        # Сохраняем результаты поиска для пагинации
+        # Сохраняем результаты поиска для пагинаци
         bot.steam_search_results = games
         
         await message.reply(
