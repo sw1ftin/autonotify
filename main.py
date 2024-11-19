@@ -25,7 +25,7 @@ load_dotenv()
 
 # Загружаем настройки
 config = configparser.ConfigParser()
-config.read('settings.cfg')
+config.read('settings.cfg', encoding='utf-8')
 
 # Настройка временной зоны из конфига
 TIMEZONE = config.get('timezone', 'timezone', fallback='Europe/Moscow')
@@ -332,7 +332,7 @@ async def process_callback(callback_query: types.CallbackQuery):
 
 @dp.message(Command("steam_search"))
 async def cmd_steam_search(message: types.Message):
-    """Поиск игры в Steam по названи��"""
+    """Поиск игры в Steam по названию"""
     if str(message.from_user.id) != os.getenv('ADMIN_ID'):
         return
         
