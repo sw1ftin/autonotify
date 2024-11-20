@@ -78,18 +78,20 @@ def format_game_post(game_info: dict) -> str:
         'ended': '#завершено'
     }
     
+    publisher_text = 'От разработчика: ' + game_info['publisher']
+    
     text = [
-        f"🎮 {hbold(game_info['title'])}",
-        f"{hitalic(f'От разработчика: {game_info['publisher']}')}",
+        "🎮 " + hbold(game_info['title']),
+        hitalic(publisher_text),
         "",
-        f"{hbold('⏰ Период раздачи:')}",
-        f"▫️ Начало: {start_date_msk}",
-        f"▫️ Конец: {end_date_msk}",
+        hbold('⏰ Период раздачи:'),
+        "▫️ Начало: " + start_date_msk,
+        "▫️ Конец: " + end_date_msk,
         "",
-        f"💰 {hbold('Обычная цена:')} {price}",
-        f"📥 {hbold('Сейчас:')} Хватай бесплатно! 🎉",
+        "💰 " + hbold('Обычная цена:') + " " + price,
+        "📥 " + hbold('Сейчас:') + " Хватай бесплатно! 🎉",
         "",
-        f"🔗 {hbold('Забрать игру:')}",
+        "🔗 " + hbold('Забрать игру:'),
         game_info['url'],
         "",
         hitalic(
@@ -98,7 +100,7 @@ def format_game_post(game_info: dict) -> str:
             else "Недоступно на аккаунтах с регионом Россия 😢"
         ),
         "",
-        f"{status_tags.get(game_info['status'], '')} \n#egs"
+        status_tags.get(game_info['status'], '') + " #egs"
     ]
     
     return "\n".join(text)
@@ -122,7 +124,7 @@ async def check_steam_deals():
                     add_to_history(game_info, 'auto')
                     await asyncio.sleep(2)
     except Exception as e:
-        logging.error(f"Ошибка при проверке Steam: {e}")
+        logging.error("Ошибка при проверке Steam: " + str(e))
 
 async def check_ended_giveaways():
     """Проверяет завершенные раздачи"""
@@ -136,9 +138,9 @@ async def check_ended_giveaways():
                 if current_time > end_time:
                     game['status'] = 'ended'
                     text = [
-                        f"🚫 {hbold('Раздача завершена')}",
+                        "🚫 " + hbold('Раздача завершена'),
                         "",
-                        f"🎮 {hbold(game['title'])}",
+                        "🎮 " + hbold(game['title']),
                         "",
                         "Раздача этой игры больше не доступна.",
                         "",
@@ -152,13 +154,13 @@ async def check_ended_giveaways():
                     )
                     
                     remove_from_history(game['title'])
-                    logging.info(f"Удалена завершенная раздача: {game['title']}")
+                    logging.info("Удалена завершенная раздача: " + game['title'])
             except Exception as e:
-                logging.error(f"Ошибка при обработке завершенной раздачи {game['title']}: {e}")
+                logging.error("Ошибка при обработке завершенной раздачи " + game['title'] + ": " + str(e))
                 continue
                 
     except Exception as e:
-        logging.error(f"Ошибка при проверке завершенных раздач: {e}")
+        logging.error("Ошибка при проверке завершенных раздач: " + str(e))
 
 async def check_started_giveaways():
     """Проверяет начавшиеся раздачи"""
@@ -187,12 +189,12 @@ async def check_started_giveaways():
                             remove_from_history(game['title'])
                             add_to_history(game_info, 'auto')
                             
-                            logging.info(f"Обновлен статус раздачи: {game['title']}")
+                            logging.info("Обновлен статус раздачи: " + game['title'])
             except Exception as e:
-                logging.error(f"Ошибка при обработке начавшейся раздачи {game['title']}: {e}")
+                logging.error("Ошибка при обработке начавшейся раздачи " + game['title'] + ": " + str(e))
                 continue
     except Exception as e:
-        logging.error(f"Ошибка при проверке начавшихся раздач: {e}")
+        logging.error("Ошибка при проверке начавшихся раздач: " + str(e))
 
 async def periodic_checks():
     """Периодическая проверка обеих платформ"""
@@ -223,11 +225,11 @@ async def periodic_checks():
             logging.info("Запуск проверки Steam")
             await check_steam_deals()
             
-            logging.info(f"Проверки завершены, следующая через {CHECK_INTERVAL} секунд")
+            logging.info("Проверки завершены, следующая через " + str(CHECK_INTERVAL) + " секунд")
             await asyncio.sleep(CHECK_INTERVAL)
             
         except Exception as e:
-            logging.error(f"Ошибка при выполнении периодических проверок: {e}")
+            logging.error("Ошибка при выполнении периодических проверок: " + str(e))
             await asyncio.sleep(300)
 
 @dp.message(Command("post"))
@@ -245,7 +247,7 @@ async def cmd_post(message: types.Message):
             await message.reply("Не удалось получить данные об играх. Попробуйте позже.")
             return
         
-        logging.info(f"Получено {len(games)} игр для предпросмотра")
+        logging.info("Получено " + str(len(games)) + " игр для предпросмотра")
         preview_msg = await message.reply("🎮 Предпросмотр постов:")
         
         for game in games:
@@ -265,14 +267,14 @@ async def cmd_post(message: types.Message):
                 )
                 await asyncio.sleep(1)
             except Exception as e:
-                error_msg = f"Ошибка при отправке поста {game['title']}: {e}"
+                error_msg = "Ошибка при отправке поста " + game['title'] + ": " + str(e)
                 logging.error(error_msg)
                 await message.reply(error_msg)
         
         await preview_msg.delete()
         
     except Exception as e:
-        error_msg = f"Ошибка при подготовке постов: {str(e)}"
+        error_msg = "Ошибка при подготовке постов: " + str(e)
         logging.error(error_msg)
         await message.reply(error_msg)
 
@@ -362,7 +364,7 @@ async def process_callback(callback_query: types.CallbackQuery):
                     await callback_query.answer("Ошибка: игра не найдена")
                 
     except Exception as e:
-        logging.error(f"Ошибка при обработке callback: {e}")
+        logging.error("Ошибка при обработке callback: " + str(e))
         await callback_query.answer(f"Произошла ошибка: {str(e)}")
 
 @dp.message(Command("steam_search"))
@@ -425,14 +427,14 @@ async def process_steam_page(callback_query: types.CallbackQuery):
 async def send_help_message(message: types.Message):
     """Отправляет сообщние с помощью"""
     help_text = [
-        f"{hbold('📋 Доступные команды:')}",
+        hbold('📋 Доступные команды:'),
         "",
-        f"/post - Предпросмотр и публикация раздач Epic Games",
-        f"/steam_search [название] - Поиск игры в Steam",
-        f"/steam_url [ссылка] - Создание поста по ссылке на игру Steam",
-        f"/help - Показать это сообщение",
+        "/post - Предпросмотр и публикация раздач Epic Games",
+        "/steam_search [название] - Поиск игры в Steam",
+        "/steam_url [ссылка] - Создание поста по ссылке на игру Steam",
+        "/help - Показать это сообщение",
         "",
-        f"{hbold('🔍 Быстрый поиск:')}",
+        hbold('🔍 Быстрый поиск:'),
         "• Отправьте название игры для поиска в Steam",
         "• Отправьте ссылку на игру Steam для создания поста"
     ]

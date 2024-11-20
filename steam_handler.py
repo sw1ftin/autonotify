@@ -23,24 +23,30 @@ def create_steam_search_keyboard(games: list, page: int = 0, items_per_page: int
     
     for i in range(start_idx, end_idx):
         game = games[i]
+        button_text = str(i+1) + ". " + game['name']
+        callback_data = "steam_select_" + str(game['id'])
         builder.button(
-            text=f"{i+1}. {game['name']}",
-            callback_data=f"steam_select_{game['id']}"
+            text=button_text,
+            callback_data=callback_data
         )
         builder.adjust(1)
+    
+    prev_callback = "steam_page_" + str(page-1) if page > 0 else "steam_page_none"
+    next_callback = "steam_page_" + str(page+1) if (page + 1) * items_per_page < len(games) else "steam_page_none"
+    page_text = "📄 " + str(page + 1) + "/" + str((len(games) + items_per_page - 1) // items_per_page)
     
     nav_buttons = [
         InlineKeyboardButton(
             text="◀️" if page > 0 else "　",
-            callback_data=f"steam_page_{page-1}" if page > 0 else "steam_page_none"
+            callback_data=prev_callback
         ),
         InlineKeyboardButton(
-            text=f"📄 {page + 1}/{(len(games) + items_per_page - 1) // items_per_page}",
+            text=page_text,
             callback_data="steam_page_current"
         ),
         InlineKeyboardButton(
             text="▶️" if (page + 1) * items_per_page < len(games) else "　",
-            callback_data=f"steam_page_{page+1}" if (page + 1) * items_per_page < len(games) else "steam_page_none"
+            callback_data=next_callback
         )
     ]
     
@@ -60,31 +66,34 @@ def format_steam_post(game_info: Dict) -> str:
         prices = []
         
         if game_info['price']['RUB']['current'] != -1:
-            rub_price = f"{game_info['price']['RUB']['current']} ₽"
+            rub_price = str(game_info['price']['RUB']['current']) + " ₽"
             if game_info['price']['discount'] > 0:
-                rub_price = f"{rub_price} (-{game_info['price']['discount']}%)"
+                rub_price = rub_price + " (-" + str(game_info['price']['discount']) + "%)"
             prices.append(rub_price)
         else:
             prices.append("Неизвестно")
             
         if game_info['price']['KZT']['current'] != -1:
-            kzt_price = f"{game_info['price']['KZT']['current']} ₸"
+            kzt_price = str(game_info['price']['KZT']['current']) + " ₸"
             if game_info['price']['discount'] > 0:
-                kzt_price = f"{kzt_price} (-{game_info['price']['discount']}%)"
+                kzt_price = kzt_price + " (-" + str(game_info['price']['discount']) + "%)"
             prices.append(kzt_price)
         else:
             prices.append("Неизвестно")
             
-        price_text = f"RUB: {prices[0]}\nKZT: {prices[1]}"
+        price_text = "RUB: " + prices[0] + "\nKZT: " + prices[1]
+    
+    developer_text = "От разработчика: " + game_info['developers'][0]
+    url = "https://store.steampowered.com/app/" + str(game_info['steam_appid']) + "/"
     
     text = [
-        f"🎮 {hbold(game_info['title'])}",
-        f"{hitalic(f'От разработчика: {game_info['developers'][0]}')}",
+        "🎮 " + hbold(game_info['title']),
+        hitalic(developer_text),
         "",
-        f"💰 {hbold('Цена:')}\n{price_text}",
+        "💰 " + hbold('Цена:') + "\n" + price_text,
         "",
-        f"🔗 {hbold('Страница игры:')}",
-        f"https://store.steampowered.com/app/{game_info['steam_appid']}/",
+        "🔗 " + hbold('Страница игры:'),
+        url,
         "",
         hitalic(game_info['description']),
         "",

@@ -25,13 +25,15 @@ def create_game_info(game, offer, status, available_in_russia=None):
             }
             price_info["discount"] = discount
 
+    url = "https://store.epicgames.com/ru/p/" + game['catalogNs']['mappings'][0]['pageSlug']
+
     return {
         'title': game['title'],
         'publisher': game.get('seller', {}).get('name'),
         'status': status,
         'start_date': offer['startDate'],
         'end_date': offer['endDate'],
-        'url': f"https://store.epicgames.com/ru/p/{game['catalogNs']['mappings'][0]['pageSlug']}",
+        'url': url,
         'image_url': game.get('keyImages', [{}])[0].get('url'),
         'price': price_info,
         'available_in_russia': available_in_russia
@@ -74,7 +76,8 @@ def get_free_games_for_region(region):
         return games
         
     except requests.exceptions.RequestException as e:
-        print(f"Ошибка при получении данных для региона {region}: {e}")
+        error_msg = "Ошибка при получении данных для региона " + region + ": " + str(e)
+        print(error_msg)
         return None
 
 def get_free_games():
@@ -105,9 +108,9 @@ def get_free_games():
 if __name__ == "__main__":
     games = get_free_games()
     if games:
-        print(f"Найдено {len(games)} бесплатных игр")
+        print("Найдено " + str(len(games)) + " бесплатных игр")
         for game in games:
-            print(f"\nНазвание: {game['title']}")
-            print(f"Статус: {'Активна' if game['status'] == 'active' else 'Скоро'}")
-            print(f"Период: {game['start_date']} - {game['end_date']}")
-            print(f"Доступно в России: {'Да' if game['available_in_russia'] else 'Нет'}")
+            print("\nНазвание: " + game['title'])
+            print("Статус: " + ('Активна' if game['status'] == 'active' else 'Скоро'))
+            print("Период: " + game['start_date'] + " - " + game['end_date'])
+            print("Доступно в России: " + ('Да' if game['available_in_russia'] else 'Нет'))
