@@ -1,5 +1,6 @@
 import requests
 import re
+from datetime import datetime
 from typing import List, Dict, Optional
 from bs4 import BeautifulSoup
 
@@ -99,6 +100,10 @@ class SteamParser:
     def format_game_info(self, game_data: Dict) -> Dict:
         """Форматирует информацию об игре в единый формат"""
         is_free = game_data.get("is_free", False)
+        status = 'active'
+        post_time = datetime.now().isoformat()
+        start_date = post_time
+        end_date = post_time
         
         ru_data = self.get_game_details(game_data['steam_appid'], 'RU')
         kz_data = self.get_game_details(game_data['steam_appid'], 'KZ')
@@ -152,7 +157,12 @@ class SteamParser:
             "is_free": is_free,
             "price": price,
             "image_url": game_data.get("header_image", ""),
+            "url": f"https://store.steampowered.com/app/{game_data.get('steam_appid')}/",
             "steam_appid": game_data.get("steam_appid", ""),
+            "status": status,
+            "start_date": start_date,
+            "end_date": end_date,
+            "available_in_russia": True,
             "categories": [cat.get("description") for cat in game_data.get("categories", [])],
             "genres": [genre.get("description") for genre in game_data.get("genres", [])]
         }

@@ -32,13 +32,14 @@ def add_to_history(game_info: dict, post_type: str = 'auto'):
     """Добавляет пост в историю"""
     try:
         history = load_history()
+        post_time = datetime.now().isoformat()
         history.append({
-            'title': game_info['title'],
-            'status': game_info['status'],
-            'post_time': datetime.now().isoformat(),
+            'title': game_info.get('title', ''),
+            'status': game_info.get('status', 'active'),
+            'post_time': post_time,
             'post_type': post_type,
-            'start_date': game_info['start_date'],
-            'end_date': game_info['end_date']
+            'start_date': game_info.get('start_date', post_time),
+            'end_date': game_info.get('end_date', post_time)
         })
         save_history(history)
     except Exception as e:
@@ -69,4 +70,4 @@ def get_posted_games() -> list:
         return history
     except Exception as e:
         print(f"Ошибка при получении истории: {e}")
-        return [] 
+        return []

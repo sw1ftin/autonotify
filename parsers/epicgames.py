@@ -84,8 +84,7 @@ def get_free_games():
     """Основная функция получения и сравнения списков игр"""
     us_games = get_free_games_for_region('US')
     ru_games = get_free_games_for_region('RU')
-    
-    if not us_games or not ru_games:
+    if not us_games and not ru_games:
         return None
         
     us_titles = {game['title']: game for game in us_games}
