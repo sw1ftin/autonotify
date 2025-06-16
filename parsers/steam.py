@@ -1,8 +1,7 @@
 import requests
-from datetime import datetime, timedelta
-import json
 import re
 from typing import List, Dict, Optional
+from bs4 import BeautifulSoup
 
 class SteamParser:
     def __init__(self):
@@ -13,6 +12,9 @@ class SteamParser:
 
     def search_games(self, query: str) -> List[Dict]:
         """Поиск игр в Steam по названию"""
+        if not query or query.strip().lower() in ('free', 'бесплатно'):
+            return self.search_free_games()
+        
         url = f"{self.base_url}/storesearch/"
         params = {
             'term': query,
@@ -36,6 +38,39 @@ class SteamParser:
             return items[:100]
         except Exception as e:
             print(f"Error searching games: {e}")
+            return []
+
+    def search_free_games(self) -> List[Dict]:
+        """Поиск бесплатных игр в Steam по ссылке фильтрации"""
+        url = "https://store.steampowered.com/search/"
+        params = {
+            'maxprice': 'free',
+            'specials': '1',
+            'ndl': '1',
+            'as-discount-percent': '100-',
+            'l': 'russian',
+            'cc': 'RU'
+        }
+        try:
+            response = requests.get(url, params=params, headers=self.headers)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+            rows = soup.select('a.search_result_row')
+            items = []
+            for row in rows:
+                app_id = row.get('data-ds-appid')
+                title_elem = row.select_one('span.title')
+                if not app_id or not title_elem:
+                    continue
+                items.append({
+                    'id': int(app_id),
+                    'name': title_elem.text.strip(),
+                    'url': row.get('href')
+                })
+            print(f"Found {len(items)} free games")
+            return items
+        except Exception as e:
+            print(f"Error searching free games: {e}")
             return []
 
     def get_app_id_from_url(self, url: str) -> Optional[str]:
@@ -63,7 +98,6 @@ class SteamParser:
 
     def format_game_info(self, game_data: Dict) -> Dict:
         """Форматирует информацию об игре в единый формат"""
-        price_info = game_data.get("price_overview", {})
         is_free = game_data.get("is_free", False)
         
         ru_data = self.get_game_details(game_data['steam_appid'], 'RU')
