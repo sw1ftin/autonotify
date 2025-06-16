@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 import os
+from typing import Optional
 
 HISTORY_FILE = 'data/post_history.json'
 
@@ -28,7 +29,7 @@ def save_history(history):
     with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
         json.dump(history, f, indent=2, ensure_ascii=False)
 
-def add_to_history(game_info: dict, post_type: str = 'auto'):
+def add_to_history(game_info: dict, post_type: str = 'auto', chat_id: Optional[int] = None, message_id: Optional[int] = None):
     """Добавляет пост в историю"""
     history = load_history()
     now = datetime.now(timezone.utc).isoformat()
@@ -41,6 +42,8 @@ def add_to_history(game_info: dict, post_type: str = 'auto'):
         'status': status,
         'post_time': now,
         'post_type': post_type,
+        'chat_id': chat_id,
+        'message_id': message_id,
         'start_date': start_date,
         'end_date': end_date
     }
