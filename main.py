@@ -108,7 +108,7 @@ def format_game_post(game_info: dict) -> str:
 async def check_steam_deals():
     """Проверяет скидки в Steam"""
     try:
-        search_results = steam_parser.search_games("*")
+        search_results = steam_parser.search_games("free")
         
         for game in search_results:
             game_info = steam_parser.get_game_by_id(str(game['id']))
