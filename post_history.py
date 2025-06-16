@@ -47,6 +47,9 @@ def add_to_history(game_info: dict, post_type: str = 'auto', chat_id: Optional[i
         'start_date': start_date,
         'end_date': end_date
     }
+    # Добавляем идентификатор Steam, если это Steam игра
+    if game_info.get('steam_appid'):
+        entry['steam_appid'] = game_info['steam_appid']
     save_history(history + [entry])
 
 def is_game_posted(game_title: str) -> bool:

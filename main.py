@@ -154,6 +154,36 @@ async def check_ended_giveaways():
 
         for game in posted_games:
             try:
+                steam_id = game.get("steam_appid")
+                if steam_id:
+                    info = steam_parser.get_game_by_id(str(steam_id))
+                    if not info or info["price"]["discount"] < 100:
+                        chat_id = game.get("chat_id")
+                        msg_id = game.get("message_id")
+                        if chat_id and msg_id:
+                            try:
+                                await bot.delete_message(
+                                    chat_id=chat_id, message_id=msg_id
+                                )
+                            except Exception:
+                                pass
+                        text = [
+                            "🚫 " + hbold("Раздача завершена"),
+                            "",
+                            "🎮 " + hbold(game["title"]),
+                            "",
+                            "#завершено #steam",
+                        ]
+                        await bot.send_message(
+                            chat_id=CHANNEL_ID,
+                            text="\n".join(text),
+                            parse_mode=ParseMode.HTML,
+                        )
+                        remove_from_history(game["title"])
+                        logging.info(
+                            "Удалена завершенная раздача Steam: " + game["title"]
+                        )
+                    continue
                 end_time = parse_iso_datetime(game.get("end_date", ""))
                 if current_time > end_time:
                     chat_id = game.get("chat_id")
@@ -163,15 +193,12 @@ async def check_ended_giveaways():
                             await bot.delete_message(chat_id=chat_id, message_id=msg_id)
                         except Exception:
                             pass
-                    game["status"] = "ended"
                     text = [
                         "🚫 " + hbold("Раздача завершена"),
                         "",
                         "🎮 " + hbold(game["title"]),
                         "",
-                        "Раздача этой игры больше не доступна.",
-                        "",
-                        "#завершено \n#egs",
+                        "#завершено #egs",
                     ]
                     await bot.send_message(
                         chat_id=CHANNEL_ID,
@@ -179,7 +206,7 @@ async def check_ended_giveaways():
                         parse_mode=ParseMode.HTML,
                     )
                     remove_from_history(game["title"])
-                    logging.info("Удалена завершенная раздача: " + game["title"])
+                    logging.info("Удалена завершенная раздача EGS: " + game["title"])
             except Exception as e:
                 logging.error(
                     "Ошибка при обработке завершенной раздачи "
