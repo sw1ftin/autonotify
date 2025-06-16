@@ -112,17 +112,18 @@ async def check_steam_deals():
         
         for game in search_results:
             game_info = steam_parser.get_game_by_id(str(game['id']))
-            if game_info and not is_game_posted(game_info['title']):
-                if game_info['price']['discount'] >= STEAM_MIN_DISCOUNT:
-                    formatted_text = format_steam_post(game_info)
-                    await bot.send_photo(
-                        chat_id=CHANNEL_ID,
-                        photo=game_info['image_url'],
-                        caption=formatted_text,
-                        parse_mode=ParseMode.HTML
-                    )
-                    add_to_history(game_info, 'auto')
-                    await asyncio.sleep(2)
+            if not game_info or is_game_posted(game_info['title']):
+                continue
+            formatted_text = format_steam_post(game_info)
+            await bot.send_photo(
+                chat_id=CHANNEL_ID,
+                photo=game_info['image_url'],
+                caption=formatted_text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=get_post_keyboard(None, game_info)
+            )
+            add_to_history(game_info, 'auto')
+            await asyncio.sleep(2)
     except Exception as e:
         logging.error("Ошибка при проверке Steam: " + str(e))
 
@@ -134,7 +135,7 @@ async def check_ended_giveaways():
         
         for game in posted_games:
             try:
-                end_time = datetime.fromisoformat(game['end_date'].replace('Z', '+00:00'))
+                end_time = parse_iso_datetime(game.get('end_date', ''))
                 if current_time > end_time:
                     game['status'] = 'ended'
                     text = [
@@ -170,8 +171,8 @@ async def check_started_giveaways():
         
         for game in posted_games:
             try:
-                if game['status'] == 'upcoming':
-                    start_time = datetime.fromisoformat(game['start_date'].replace('Z', '+00:00'))
+                if game.get('status') == 'upcoming':
+                    start_time = parse_iso_datetime(game.get('start_date', ''))
                     if current_time >= start_time:
                         games = get_free_games()
                         game_info = next((g for g in games if g['title'] == game['title']), None)
@@ -493,6 +494,15 @@ async def handle_message(message: types.Message):
             "Результаты поиска:",
             reply_markup=create_steam_search_keyboard(games)
         )
+
+def parse_iso_datetime(s: str) -> datetime:
+    """Парсит ISO-строку в timezone-aware datetime, добавляя UTC при отсутствии смещения"""
+    if s.endswith('Z'):
+        s = s[:-1] + '+00:00'
+    dt = datetime.fromisoformat(s)
+    if dt.tzinfo is None:
+        dt = pytz.UTC.localize(dt)
+    return dt
 
 async def main():
     asyncio.create_task(periodic_checks())

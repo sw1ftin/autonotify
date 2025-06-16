@@ -186,3 +186,10 @@ class SteamParser:
             return None
             
         return self.format_game_info(game_data)
+
+if __name__ == "__main__":
+    parser = SteamParser()
+    
+    free_games = parser.search_free_games()
+    for free_game in free_games:
+        print(free_game)

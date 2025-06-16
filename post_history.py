@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 HISTORY_FILE = 'data/post_history.json'
@@ -30,20 +30,21 @@ def save_history(history):
 
 def add_to_history(game_info: dict, post_type: str = 'auto'):
     """Добавляет пост в историю"""
-    try:
-        history = load_history()
-        post_time = datetime.now().isoformat()
-        history.append({
-            'title': game_info.get('title', ''),
-            'status': game_info.get('status', 'active'),
-            'post_time': post_time,
-            'post_type': post_type,
-            'start_date': game_info.get('start_date', post_time),
-            'end_date': game_info.get('end_date', post_time)
-        })
-        save_history(history)
-    except Exception as e:
-        print(f"Ошибка при добавлении в историю: {e}")
+    history = load_history()
+    now = datetime.now(timezone.utc).isoformat()
+    title = game_info.get('title') or ''
+    status = game_info.get('status') or 'active'
+    start_date = game_info.get('start_date') or now
+    end_date = game_info.get('end_date') or now
+    entry = {
+        'title': title,
+        'status': status,
+        'post_time': now,
+        'post_type': post_type,
+        'start_date': start_date,
+        'end_date': end_date
+    }
+    save_history(history + [entry])
 
 def is_game_posted(game_title: str) -> bool:
     """Проверяет, был ли уже пост об этой игре"""
